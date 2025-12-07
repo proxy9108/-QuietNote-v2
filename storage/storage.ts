@@ -6,22 +6,32 @@
 
 import { CryptoManager, EncryptionResult } from '../crypto/crypto';
 
+/**
+ * Base Note Object - exact specification compliance
+ * All fields are mandatory per specification
+ */
 export interface Note {
-  id: string;
-  title: string;
-  content: string;
-  url?: string; // for page-specific notes
-  color: string;
-  createdAt: number;
-  updatedAt: number;
-  encrypted: boolean;
-  tags?: string[];
-  pinned?: boolean;
+  id: string;                          // Random UUIDv4
+  createdAt: number;                   // UNIX timestamp (ms)
+  updatedAt: number;                   // UNIX timestamp (ms)
+  title: string;                       // Encrypted if encryptionEnabled
+  content: string;                     // Encrypted if encryptionEnabled
+  color: string;                       // CSS color hex (#RRGGBB)
+  position: { x: number; y: number; }; // Pixel-based visual coordinates
+  size: { width: number; height: number; }; // Pixel dimensions
+  pageURL: string | null;              // Null for Personal Notes, normalized URL for page notes
+  masked: boolean;                     // Whether to hide content visually
 }
 
-export interface EncryptedNote extends Note {
-  content: string; // encrypted content (base64)
-  encryptionMetadata?: EncryptionResult;
+/**
+ * Note Metadata (stored separately, not in core Note object)
+ */
+export interface NoteMetadata {
+  tags?: string[];
+  pinned?: boolean;
+  encrypted: boolean;  // Flag to indicate if title/content are encrypted
+  titleEncryptionMetadata?: EncryptionResult;   // Encryption data for title
+  contentEncryptionMetadata?: EncryptionResult; // Encryption data for content
 }
 
 export interface StorageSettings {
@@ -150,84 +160,157 @@ export class StorageManager {
 
   /**
    * Save a note (encrypted if enabled)
+   * Per spec: if encryption enabled, encrypt both title AND content
    */
-  static async saveNote(note: Note): Promise<void> {
+  static async saveNote(note: Note, metadata?: NoteMetadata): Promise<void> {
     const settings = await this.getSettings();
+    let titleToStore = note.title;
     let contentToStore = note.content;
-    let encryptionMetadata: EncryptionResult | undefined;
+    let titleEncryptionMetadata: EncryptionResult | undefined;
+    let contentEncryptionMetadata: EncryptionResult | undefined;
 
-    // Encrypt if enabled
+    // Encrypt BOTH title and content if enabled (per spec)
     if (settings.encryptionEnabled && this.encryptionKey && this.encryptionSalt) {
-      const encrypted = await CryptoManager.encrypt(
+      // Encrypt title
+      const encryptedTitle = await CryptoManager.encrypt(
+        note.title,
+        this.encryptionKey,
+        this.encryptionSalt
+      );
+      titleToStore = encryptedTitle.ciphertext;
+      titleEncryptionMetadata = encryptedTitle;
+
+      // Encrypt content
+      const encryptedContent = await CryptoManager.encrypt(
         note.content,
         this.encryptionKey,
         this.encryptionSalt
       );
-      contentToStore = encrypted.ciphertext;
-      encryptionMetadata = encrypted;
+      contentToStore = encryptedContent.ciphertext;
+      contentEncryptionMetadata = encryptedContent;
     }
 
-    const storageNote: EncryptedNote = {
+    // Build storage object with metadata
+    const storageNote = {
       ...note,
+      title: titleToStore,
       content: contentToStore,
-      encrypted: settings.encryptionEnabled,
-      encryptionMetadata,
+      _metadata: {
+        ...metadata,
+        encrypted: settings.encryptionEnabled,
+        titleEncryptionMetadata,
+        contentEncryptionMetadata,
+      },
     };
 
-    // Determine storage key
-    const key = note.url ? `note:${this.normalizeUrl(note.url)}:${note.id}` : `note:${note.id}`;
+    // Determine storage key (use pageURL instead of url)
+    const key = note.pageURL
+      ? `note:${this.normalizeUrl(note.pageURL)}:${note.id}`
+      : `note:${note.id}`;
     await this.setRawStorage(key, storageNote);
   }
 
   /**
    * Get a note (decrypted if needed)
+   * Per spec: decrypt BOTH title and content if encryption enabled
    */
-  static async getNote(id: string, url?: string): Promise<Note | null> {
-    const key = url ? `note:${this.normalizeUrl(url)}:${id}` : `note:${id}`;
-    const stored = await this.getRawStorage(key);
+  static async getNote(id: string, pageURL?: string | null): Promise<Note | null> {
+    const key = pageURL
+      ? `note:${this.normalizeUrl(pageURL)}:${id}`
+      : `note:${id}`;
+    const stored: any = await this.getRawStorage(key);
 
     if (!stored) return null;
 
-    const note = stored as EncryptedNote;
+    const note = { ...stored } as Note;
+    const metadata = stored._metadata as NoteMetadata | undefined;
 
-    // Decrypt if needed
-    if (note.encrypted && note.encryptionMetadata && this.encryptionKey) {
-      const decrypted = await CryptoManager.decrypt(note.encryptionMetadata, this.encryptionKey);
-      if (decrypted.success) {
-        note.content = decrypted.plaintext;
-      } else {
-        console.error('Failed to decrypt note:', decrypted.error);
-        return null;
+    // Decrypt BOTH title and content if needed
+    if (metadata?.encrypted && this.encryptionKey) {
+      // Decrypt title
+      if (metadata.titleEncryptionMetadata) {
+        const decryptedTitle = await CryptoManager.decrypt(
+          metadata.titleEncryptionMetadata,
+          this.encryptionKey
+        );
+        if (decryptedTitle.success) {
+          note.title = decryptedTitle.plaintext;
+        } else {
+          console.error('Failed to decrypt note title:', decryptedTitle.error);
+          return null;
+        }
+      }
+
+      // Decrypt content
+      if (metadata.contentEncryptionMetadata) {
+        const decryptedContent = await CryptoManager.decrypt(
+          metadata.contentEncryptionMetadata,
+          this.encryptionKey
+        );
+        if (decryptedContent.success) {
+          note.content = decryptedContent.plaintext;
+        } else {
+          console.error('Failed to decrypt note content:', decryptedContent.error);
+          return null;
+        }
       }
     }
+
+    // Remove metadata from returned note
+    delete (note as any)._metadata;
 
     return note;
   }
 
   /**
-   * Get all notes (with optional URL filter)
+   * Get all notes (with optional pageURL filter)
+   * Per spec: decrypt BOTH title and content for all notes
    */
-  static async getAllNotes(url?: string): Promise<Note[]> {
+  static async getAllNotes(pageURL?: string | null): Promise<Note[]> {
     const storage = await this.getAllRawStorage();
     const notes: Note[] = [];
 
     for (const [key, value] of Object.entries(storage)) {
       if (!key.startsWith('note:')) continue;
 
-      const note = value as EncryptedNote;
+      const stored: any = value;
+      const note = { ...stored } as Note;
+      const metadata = stored._metadata as NoteMetadata | undefined;
 
-      // Filter by URL if provided
-      if (url && note.url !== url) continue;
+      // Filter by pageURL if provided
+      if (pageURL !== undefined && note.pageURL !== pageURL) continue;
 
-      // Decrypt if needed
-      if (note.encrypted && note.encryptionMetadata && this.encryptionKey) {
-        const decrypted = await CryptoManager.decrypt(note.encryptionMetadata, this.encryptionKey);
-        if (decrypted.success) {
-          note.content = decrypted.plaintext;
-        } else {
-          continue; // Skip notes that fail to decrypt
+      // Decrypt BOTH title and content if needed
+      if (metadata?.encrypted && this.encryptionKey) {
+        // Decrypt title
+        if (metadata.titleEncryptionMetadata) {
+          const decryptedTitle = await CryptoManager.decrypt(
+            metadata.titleEncryptionMetadata,
+            this.encryptionKey
+          );
+          if (decryptedTitle.success) {
+            note.title = decryptedTitle.plaintext;
+          } else {
+            continue; // Skip notes that fail to decrypt
+          }
+        }
+
+        // Decrypt content
+        if (metadata.contentEncryptionMetadata) {
+          const decryptedContent = await CryptoManager.decrypt(
+            metadata.contentEncryptionMetadata,
+            this.encryptionKey
+          );
+          if (decryptedContent.success) {
+            note.content = decryptedContent.plaintext;
+          } else {
+            continue; // Skip notes that fail to decrypt
+          }
         }
       }
+
+      // Remove metadata from returned note
+      delete (note as any)._metadata;
 
       notes.push(note);
     }
@@ -237,9 +320,12 @@ export class StorageManager {
 
   /**
    * Delete a note
+   * Updated to use pageURL instead of url
    */
-  static async deleteNote(id: string, url?: string): Promise<void> {
-    const key = url ? `note:${this.normalizeUrl(url)}:${id}` : `note:${id}`;
+  static async deleteNote(id: string, pageURL?: string | null): Promise<void> {
+    const key = pageURL
+      ? `note:${this.normalizeUrl(pageURL)}:${id}`
+      : `note:${id}`;
     await this.removeRawStorage(key);
   }
 
@@ -346,6 +432,56 @@ export class StorageManager {
       locked,
       lastUnlock: locked ? 0 : Date.now(),
     });
+  }
+
+  /**
+   * Create a new Note with proper defaults per specification
+   */
+  static async createNewNote(
+    content: string = '',
+    pageURL: string | null = null,
+    overrides?: Partial<Note>
+  ): Promise<Note> {
+    const settings = await this.getSettings();
+    const now = Date.now();
+
+    // Generate UUIDv4-like ID
+    const id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+
+    // Determine default position based on settings
+    const positionMap: Record<string, { x: number; y: number }> = {
+      'top-right': { x: (typeof window !== 'undefined' ? window.innerWidth : 1920) - 320, y: 20 },
+      'top-left': { x: 20, y: 20 },
+      'bottom-right': { x: (typeof window !== 'undefined' ? window.innerWidth : 1920) - 320, y: (typeof window !== 'undefined' ? window.innerHeight : 1080) - 220 },
+      'bottom-left': { x: 20, y: (typeof window !== 'undefined' ? window.innerHeight : 1080) - 220 },
+    };
+
+    // Determine default size based on settings
+    const sizeMap: Record<string, { width: number; height: number }> = {
+      'small': { width: 200, height: 150 },
+      'medium': { width: 300, height: 200 },
+      'large': { width: 400, height: 300 },
+    };
+
+    const defaultNote: Note = {
+      id,
+      createdAt: now,
+      updatedAt: now,
+      title: '',
+      content,
+      color: settings.defaultNoteColor || '#FFF9E6',
+      position: positionMap[settings.defaultNotePosition] || positionMap['top-right'],
+      size: sizeMap[settings.defaultNoteSize] || sizeMap['medium'],
+      pageURL,
+      masked: false,
+      ...overrides,
+    };
+
+    return defaultNote;
   }
 
   // ===== Raw Storage Operations (using Chrome/Firefox Storage API) =====

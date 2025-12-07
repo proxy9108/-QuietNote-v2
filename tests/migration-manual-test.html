@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuietNote Migration Manual Test</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Monaco', 'Menlo', monospace;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #569cd6;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #569cd6;
+    }
+
+    h2 {
+      color: #4ec9b0;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
+    .test-section {
+      background: #252526;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #569cd6;
+      border-radius: 4px;
+    }
+
+    .test-section.passed {
+      border-left-color: #4ec9b0;
+    }
+
+    .test-section.failed {
+      border-left-color: #f48771;
+    }
+
+    button {
+      background: #569cd6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #4a8bc2;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .controls {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #252526;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 10px 0;
+      border: 1px solid #3e3e42;
+    }
+
+    .result {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+
+    .result.success {
+      background: rgba(78, 201, 176, 0.1);
+      border-left: 3px solid #4ec9b0;
+    }
+
+    .result.error {
+      background: rgba(244, 135, 113, 0.1);
+      border-left: 3px solid #f48771;
+    }
+
+    .result.info {
+      background: rgba(86, 156, 214, 0.1);
+      border-left: 3px solid #569cd6;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .status.passed {
+      background: #4ec9b0;
+      color: #000;
+    }
+
+    .status.failed {
+      background: #f48771;
+      color: #000;
+    }
+
+    .status.pending {
+      background: #dcdcaa;
+      color: #000;
+    }
+
+    #summary {
+      position: sticky;
+      top: 20px;
+      background: #252526;
+      padding: 15px;
+      border-radius: 4px;
+      border: 2px solid #569cd6;
+      margin-bottom: 20px;
+    }
+
+    .code-inline {
+      background: #3e3e42;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: inherit;
+      color: #ce9178;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔬 QuietNote Migration Test Suite</h1>
+
+    <div id="summary">
+      <h3>Test Summary</h3>
+      <div id="summary-content">
+        <p>Click "Run All Tests" to begin migration testing.</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button onclick="runAllTests()">▶ Run All Tests</button>
+      <button onclick="clearStorage()">🗑️ Clear Storage</button>
+      <button onclick="viewStorage()">👁️ View Storage</button>
+      <button onclick="setupOldData()">📦 Setup Old Data</button>
+    </div>
+
+    <div id="test-results"></div>
+  </div>
+
+  <script type="module">
+    // Test configuration
+    const config = {
+      useLocalStorage: typeof chrome === 'undefined' || !chrome.storage
+    };
+
+    // Storage abstraction
+    const storage = {
+      async get(keys) {
+        if (config.useLocalStorage) {
+          const result = {};
+          if (!keys) {
+            // Get all
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              try {
+                result[key] = JSON.parse(localStorage.getItem(key));
+              } catch {
+                result[key] = localStorage.getItem(key);
+              }
+            }
+          } else if (typeof keys === 'string') {
+            const item = localStorage.getItem(keys);
+            if (item) result[keys] = JSON.parse(item);
+          } else if (Array.isArray(keys)) {
+            keys.forEach(key => {
+              const item = localStorage.getItem(key);
+              if (item) result[key] = JSON.parse(item);
+            });
+          }
+          return result;
+        } else {
+          return new Promise(resolve => {
+            chrome.storage.local.get(keys, resolve);
+          });
+        }
+      },
+
+      async set(items) {
+        if (config.useLocalStorage) {
+          Object.entries(items).forEach(([key, value]) => {
+            localStorage.setItem(key, JSON.stringify(value));
+          });
+        } else {
+          return new Promise(resolve => {
+            chrome.storage.local.set(items, resolve);
+          });
+        }
+      },
+
+      async clear() {
+        if (config.useLocalStorage) {
+          localStorage.clear();
+        } else {
+          return new Promise(resolve => {
+            chrome.storage.local.clear(resolve);
+          });
+        }
+      }
+    };
+
+    // Migration functions (inline for testing)
+    const MigrationHelpers = {
+      normalizeUrl(url) {
+        try {
+          const urlObj = new URL(url);
+          return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+        } catch {
+          return url;
+        }
+      },
+
+      normalizeColor(color) {
+        if (!color) return '#FFF9E6';
+        if (/^#[0-9A-Fa-f]{6}$/.test(color)) return color.toUpperCase();
+        if (/^#[0-9A-Fa-f]{3}$/.test(color)) {
+          const [, r, g, b] = color;
+          return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
+        }
+
+        const colorMap = {
+          'yellow': '#FFF9E6',
+          'blue': '#E3F2FD',
+          'green': '#E8F5E9',
+          'pink': '#FCE4EC',
+          'purple': '#F3E5F5',
+          'orange': '#FFF3E0',
+        };
+
+        return colorMap[color.toLowerCase()] || '#FFF9E6';
+      },
+
+      migrateNote(oldNote, defaultPosition = 'top-right', defaultSize = 'medium') {
+        const positionMap = {
+          'top-right': { x: window.innerWidth - 320, y: 20 },
+          'top-left': { x: 20, y: 20 },
+          'bottom-right': { x: window.innerWidth - 320, y: window.innerHeight - 220 },
+          'bottom-left': { x: 20, y: window.innerHeight - 220 },
+        };
+
+        const sizeMap = {
+          'small': { width: 200, height: 150 },
+          'medium': { width: 300, height: 200 },
+          'large': { width: 400, height: 300 },
+        };
+
+        return {
+          note: {
+            id: oldNote.id,
+            createdAt: oldNote.createdAt,
+            updatedAt: oldNote.updatedAt,
+            title: oldNote.title || '',
+            content: oldNote.content || '',
+            color: this.normalizeColor(oldNote.color),
+            position: positionMap[defaultPosition],
+            size: sizeMap[defaultSize],
+            pageURL: oldNote.url ? this.normalizeUrl(oldNote.url) : null,
+            masked: false
+          },
+          metadata: {
+            tags: oldNote.tags,
+            pinned: oldNote.pinned,
+            encrypted: oldNote.encrypted || false,
+            encryptionMetadata: oldNote.encryptionMetadata
+          }
+        };
+      }
+    };
+
+    // Test runners
+    window.clearStorage = async function() {
+      await storage.clear();
+      logResult('info', 'Storage cleared');
+    };
+
+    window.viewStorage = async function() {
+      const data = await storage.get();
+      console.log('Storage contents:', data);
+      logResult('info', `Storage has ${Object.keys(data).length} items (see console)`);
+    };
+
+    window.setupOldData = async function() {
+      const oldNotes = {
+        'note:https://example.com/page:note-001': {
+          id: 'note-001',
+          title: 'Test Note 1',
+          content: 'This is test content',
+          url: 'https://example.com/page',
+          color: '#FFF9E6',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          encrypted: false,
+          tags: ['work'],
+          pinned: true
+        },
+        'note:note-002': {
+          id: 'note-002',
+          title: 'Personal Note',
+          content: 'Personal content',
+          color: 'yellow',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          encrypted: false
+        }
+      };
+
+      await storage.set(oldNotes);
+      logResult('success', 'Old schema test data loaded');
+    };
+
+    function logResult(type, message, data) {
+      const resultsDiv = document.getElementById('test-results');
+      const resultElem = document.createElement('div');
+      resultElem.className = `result ${type}`;
+      resultElem.innerHTML = `<strong>${type.toUpperCase()}:</strong> ${message}`;
+
+      if (data) {
+        const pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(data, null, 2);
+        resultElem.appendChild(pre);
+      }
+
+      resultsDiv.appendChild(resultElem);
+      resultsDiv.scrollTop = resultsDiv.scrollHeight;
+    }
+
+    function updateSummary(summary) {
+      const summaryContent = document.getElementById('summary-content');
+      summaryContent.innerHTML = `
+        <p><strong>Total:</strong> ${summary.total} tests</p>
+        <p><strong>Passed:</strong> <span style="color: #4ec9b0">${summary.passed}</span></p>
+        <p><strong>Failed:</strong> <span style="color: #f48771">${summary.failed}</span></p>
+        <p><strong>Success Rate:</strong> ${Math.round((summary.passed / summary.total) * 100)}%</p>
+      `;
+    }
+
+    async function testFreshInstall() {
+      const sectionDiv = createTestSection('Test 1: Fresh Install');
+
+      try {
+        await storage.clear();
+        const data = await storage.get();
+        const noteKeys = Object.keys(data).filter(k => k.startsWith('note:'));
+
+        const passed = noteKeys.length === 0;
+        logTestResult(sectionDiv, 'Storage is empty', passed);
+        logTestResult(sectionDiv, 'No migration flag', !data.migration_v2_done);
+
+        markTestSection(sectionDiv, passed);
+        return { passed, test: 'Fresh Install' };
+      } catch (error) {
+        logTestResult(sectionDiv, 'Error: ' + error.message, false);
+        markTestSection(sectionDiv, false);
+        return { passed: false, test: 'Fresh Install', error: error.message };
+      }
+    }
+
+    async function testPlaintextMigration() {
+      const sectionDiv = createTestSection('Test 2: Plaintext Migration');
+
+      try {
+        // Setup old data
+        const oldNote = {
+          id: 'note-001',
+          title: 'Test Note',
+          content: 'Test content',
+          url: 'https://example.com/page',
+          color: 'yellow',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          encrypted: false,
+          tags: ['work'],
+          pinned: true
+        };
+
+        await storage.set({ 'note:https://example.com/page:note-001': oldNote });
+
+        // Migrate
+        const result = MigrationHelpers.migrateNote(oldNote);
+
+        // Verify
+        const checks = [
+          { name: 'Has ID', value: !!result.note.id },
+          { name: 'Has timestamps', value: result.note.createdAt && result.note.updatedAt },
+          { name: 'Has position', value: result.note.position && result.note.position.x !== undefined },
+          { name: 'Has size', value: result.note.size && result.note.size.width !== undefined },
+          { name: 'Color normalized', value: /^#[0-9A-F]{6}$/.test(result.note.color) },
+          { name: 'pageURL set', value: result.note.pageURL === 'https://example.com/page' },
+          { name: 'masked = false', value: result.note.masked === false },
+          { name: 'Metadata preserved', value: result.metadata.tags && result.metadata.pinned }
+        ];
+
+        let allPassed = true;
+        checks.forEach(check => {
+          logTestResult(sectionDiv, check.name, check.value);
+          allPassed = allPassed && check.value;
+        });
+
+        // Show migrated data
+        const pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(result.note, null, 2);
+        sectionDiv.appendChild(pre);
+
+        markTestSection(sectionDiv, allPassed);
+        return { passed: allPassed, test: 'Plaintext Migration' };
+      } catch (error) {
+        logTestResult(sectionDiv, 'Error: ' + error.message, false);
+        markTestSection(sectionDiv, false);
+        return { passed: false, test: 'Plaintext Migration', error: error.message };
+      }
+    }
+
+    async function testURLNormalization() {
+      const sectionDiv = createTestSection('Test 3: URL Normalization');
+
+      try {
+        const testCases = [
+          { input: 'https://example.com/page?query=123#hash', expected: 'https://example.com/page' },
+          { input: 'http://example.com/page', expected: 'http://example.com/page' },
+          { input: 'https://example.com:443/page', expected: 'https://example.com/page' }
+        ];
+
+        let allPassed = true;
+        testCases.forEach(test => {
+          const result = MigrationHelpers.normalizeUrl(test.input);
+          const passed = result === test.expected;
+          logTestResult(sectionDiv, `${test.input} → ${result}`, passed);
+          allPassed = allPassed && passed;
+        });
+
+        markTestSection(sectionDiv, allPassed);
+        return { passed: allPassed, test: 'URL Normalization' };
+      } catch (error) {
+        logTestResult(sectionDiv, 'Error: ' + error.message, false);
+        markTestSection(sectionDiv, false);
+        return { passed: false, test: 'URL Normalization', error: error.message };
+      }
+    }
+
+    function createTestSection(title) {
+      const section = document.createElement('div');
+      section.className = 'test-section';
+      section.innerHTML = `<h2>${title} <span class="status pending">PENDING</span></h2>`;
+      document.getElementById('test-results').appendChild(section);
+      return section;
+    }
+
+    function logTestResult(section, message, passed) {
+      const result = document.createElement('div');
+      result.style.marginLeft = '20px';
+      result.style.marginBottom = '5px';
+      result.innerHTML = `${passed ? '✓' : '✗'} ${message}`;
+      result.style.color = passed ? '#4ec9b0' : '#f48771';
+      section.appendChild(result);
+    }
+
+    function markTestSection(section, passed) {
+      section.className = `test-section ${passed ? 'passed' : 'failed'}`;
+      const status = section.querySelector('.status');
+      status.className = `status ${passed ? 'passed' : 'failed'}`;
+      status.textContent = passed ? 'PASSED' : 'FAILED';
+    }
+
+    window.runAllTests = async function() {
+      document.getElementById('test-results').innerHTML = '';
+
+      const results = [];
+      results.push(await testFreshInstall());
+      results.push(await testPlaintextMigration());
+      results.push(await testURLNormalization());
+
+      const summary = {
+        total: results.length,
+        passed: results.filter(r => r.passed).length,
+        failed: results.filter(r => !r.passed).length
+      };
+
+      updateSummary(summary);
+
+      if (summary.failed === 0) {
+        logResult('success', `All ${summary.total} tests passed! ✓`);
+      } else {
+        logResult('error', `${summary.failed} of ${summary.total} tests failed`);
+      }
+    };
+
+    // Auto-detect environment
+    const env = config.useLocalStorage ? 'LocalStorage (Fallback)' : 'Chrome Extension Storage';
+    console.log(`QuietNote Migration Tests running in: ${env}`);
+  </script>
+</body>
+</html>
