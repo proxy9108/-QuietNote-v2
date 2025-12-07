@@ -1,0 +1,412 @@
+/**
+ * QuietNote Popup Styles
+ */
+
+body {
+  width: 400px;
+  margin: 0;
+  padding: 0;
+}
+
+.quietnote-popup {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 600px;
+}
+
+/* Header */
+.popup-header {
+  background: var(--primary-gradient);
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  font-size: 20px;
+}
+
+.header-title h1 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.header-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.header-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Lock Status */
+.lock-status {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-light);
+}
+
+.lock-status.locked {
+  background: #fff3e0;
+}
+
+.lock-status.unlocked {
+  background: #e8f5e9;
+}
+
+.lock-status-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.lock-status-text {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+/* Unlock Form */
+.unlock-form {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.unlock-form.hidden {
+  display: none;
+}
+
+.pin-input {
+  padding: 12px !important;
+  font-size: 18px !important;
+  letter-spacing: 2px !important;
+  text-align: center !important;
+  font-weight: bold !important;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content.hidden {
+  display: none;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-light);
+  padding: 0;
+  margin: 0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-btn:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.tab-btn.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+/* Tab Content */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  display: none;
+  padding: 8px 0;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.tab-content.hidden {
+  display: none;
+}
+
+/* Vault Actions */
+.vault-actions {
+  padding: 8px 12px;
+  background: var(--bg-light);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.new-note-btn {
+  width: 100%;
+  padding: 10px !important;
+  font-size: 13px !important;
+}
+
+/* Notes List */
+.notes-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.note-item {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-item:hover {
+  background: var(--bg-light);
+}
+
+.note-preview {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  word-break: break-word;
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.note-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.note-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.note-edit-btn,
+.note-delete-btn {
+  padding: 4px 8px;
+  background: var(--border-color);
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.note-edit-btn:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.note-delete-btn:hover {
+  background: var(--danger-color);
+  color: white;
+}
+
+/* Pages List */
+.pages-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Footer */
+.popup-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-light);
+  flex-shrink: 0;
+}
+
+.footer-info {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.lock-btn {
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+}
+
+#lock-timer {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* Loading State */
+.loading-state {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.loading-state.hidden {
+  display: none;
+}
+
+.loading-state p {
+  margin-top: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Note Editor Modal */
+#note-editor-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#note-editor-modal.hidden {
+  display: none;
+}
+
+#note-editor-modal:not(.hidden) {
+  display: flex;
+}
+
+.modal-content {
+  max-width: 100%;
+  width: 90%;
+}
+
+.note-textarea {
+  flex: 1;
+  padding: 12px !important;
+  border: none !important;
+  resize: none;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px !important;
+}
+
+.modal-footer {
+  padding: 12px !important;
+  gap: 8px;
+}
+
+.save-note-btn,
+.cancel-btn {
+  flex: 1;
+  padding: 8px !important;
+  font-size: 12px !important;
+}
+
+/* Scrollbar Styling */
+.notes-list::-webkit-scrollbar,
+.tab-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notes-list::-webkit-scrollbar-track,
+.tab-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notes-list::-webkit-scrollbar-thumb,
+.tab-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.notes-list::-webkit-scrollbar-thumb:hover,
+.tab-content::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  body {
+    width: 100%;
+  }
+
+  .popup-header h1 {
+    font-size: 14px;
+  }
+
+  .tab-btn {
+    font-size: 11px;
+    padding: 10px 8px;
+  }
+
+  .note-item {
+    padding: 10px;
+  }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .lock-status.locked {
+    background: rgba(255, 152, 0, 0.2);
+  }
+
+  .lock-status.unlocked {
+    background: rgba(76, 175, 80, 0.2);
+  }
+
+  .tabs {
+    background: var(--bg-light);
+  }
+
+  .vault-actions {
+    background: var(--bg-light);
+  }
+}

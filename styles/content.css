@@ -1,0 +1,337 @@
+/**
+ * QuietNote Content Script Styles
+ * Styles for injected elements on webpages
+ */
+
+/* Floating Button */
+#quietnote-floating-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  transition: all 0.2s ease;
+  z-index: 2147483646; /* Just below max z-index */
+  font-weight: bold;
+}
+
+#quietnote-floating-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+#quietnote-floating-btn:active {
+  transform: scale(0.95);
+}
+
+/* Modal Overlay */
+.quietnote-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483647;
+  animation: quietnote-fade-in 0.2s ease;
+}
+
+@keyframes quietnote-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal Content */
+.quietnote-modal-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: quietnote-slide-up 0.3s ease;
+}
+
+@keyframes quietnote-slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Modal Header */
+.quietnote-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px 12px 0 0;
+  color: white;
+}
+
+.quietnote-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.quietnote-close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.quietnote-close-btn:hover {
+  transform: rotate(90deg);
+}
+
+/* Textarea */
+.quietnote-textarea {
+  flex: 1;
+  padding: 20px;
+  border: none;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  color: #333;
+}
+
+.quietnote-textarea::placeholder {
+  color: #999;
+}
+
+/* Modal Footer */
+.quietnote-modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 20px;
+  border-top: 1px solid #e0e0e0;
+  justify-content: flex-end;
+}
+
+/* Buttons */
+.quietnote-btn-save,
+.quietnote-btn-delete,
+.quietnote-btn-cancel,
+.quietnote-btn-unlock {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quietnote-btn-save {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.quietnote-btn-save:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.quietnote-btn-delete {
+  background: #ff6b6b;
+  color: white;
+}
+
+.quietnote-btn-delete:hover {
+  background: #ee5a52;
+  transform: translateY(-2px);
+}
+
+.quietnote-btn-cancel {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.quietnote-btn-cancel:hover {
+  background: #d0d0d0;
+}
+
+.quietnote-btn-unlock {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.quietnote-btn-unlock:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* PIN Modal */
+.quietnote-pin-modal .quietnote-modal-content {
+  max-width: 400px;
+}
+
+.quietnote-pin-content {
+  max-width: 400px !important;
+}
+
+.quietnote-pin-prompt {
+  padding: 20px 20px 10px;
+  text-align: center;
+  color: #333;
+  font-size: 16px;
+  margin: 0;
+}
+
+.quietnote-pin-input {
+  margin: 10px 20px 20px;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 24px;
+  text-align: center;
+  letter-spacing: 4px;
+  font-weight: bold;
+  transition: border-color 0.2s;
+}
+
+.quietnote-pin-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Notification Toast */
+.quietnote-notification {
+  position: fixed;
+  bottom: -100px;
+  right: 20px;
+  background: #333;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 2147483645;
+  transition: bottom 0.3s ease;
+}
+
+.quietnote-notification.quietnote-show {
+  bottom: 20px;
+}
+
+.quietnote-notification-success {
+  background: #4caf50;
+}
+
+.quietnote-notification-error {
+  background: #f44336;
+}
+
+.quietnote-notification-info {
+  background: #2196f3;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .quietnote-modal-content {
+    background: #2d2d2d;
+    color: #e0e0e0;
+  }
+
+  .quietnote-modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-bottom-color: #444;
+  }
+
+  .quietnote-modal-header h2 {
+    color: white;
+  }
+
+  .quietnote-textarea {
+    background: #3d3d3d;
+    color: #e0e0e0;
+  }
+
+  .quietnote-textarea::placeholder {
+    color: #666;
+  }
+
+  .quietnote-modal-footer {
+    border-top-color: #444;
+  }
+
+  .quietnote-btn-cancel {
+    background: #444;
+    color: #e0e0e0;
+  }
+
+  .quietnote-btn-cancel:hover {
+    background: #555;
+  }
+
+  .quietnote-pin-input {
+    background: #3d3d3d;
+    color: #e0e0e0;
+    border-color: #555;
+  }
+
+  .quietnote-pin-input:focus {
+    border-color: #667eea;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .quietnote-modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .quietnote-modal-header h2 {
+    font-size: 16px;
+  }
+
+  #quietnote-floating-btn {
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .quietnote-notification {
+    right: 10px;
+    left: 10px;
+  }
+}
