@@ -14,6 +14,8 @@ class PopupManager {
 
   async init() {
     try {
+      this.showLoadingState(true);
+
       // Request initial state from background worker
       const response = await this.sendMessage({ type: 'GET_POPUP_STATE' });
       this.isLocked = response?.locked ?? true;
@@ -28,6 +30,8 @@ class PopupManager {
       if (!this.isLocked) {
         this.startLockTimer();
       }
+
+      this.showLoadingState(false);
     } catch (error) {
       console.error('Failed to initialize popup:', error);
       this.showLoadingState(false);
