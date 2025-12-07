@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuietNote Settings</title>
+    <link rel="stylesheet" href="../styles/settings.css">
+</head>
+<body class="settings-page">
+    <div class="settings-container">
+        <header class="settings-header">
+            <h1>🔐 QuietNote Settings</h1>
+            <button id="closeBtn" class="close-btn" title="Close">✕</button>
+        </header>
+
+        <div class="settings-tabs">
+            <button class="tab-btn active" data-tab="security">Security</button>
+            <button class="tab-btn" data-tab="ui">Display</button>
+            <button class="tab-btn" data-tab="behavior">Behavior</button>
+            <button class="tab-btn" data-tab="shortcuts">Shortcuts</button>
+            <button class="tab-btn" data-tab="about">About</button>
+        </div>
+
+        <div class="settings-content">
+            <!-- Security Settings -->
+            <div id="security" class="tab-content active">
+                <div class="setting-section">
+                    <h2>🔒 Security Level</h2>
+                    <div class="setting-group">
+                        <label class="radio-label">
+                            <input type="radio" name="securityLevel" value="full" checked>
+                            <span class="radio-title">Full Secure (Recommended)</span>
+                            <span class="radio-description">Encryption enabled, PIN required, auto-lock enabled</span>
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label class="radio-label">
+                            <input type="radio" name="securityLevel" value="medium">
+                            <span class="radio-title">Medium Security</span>
+                            <span class="radio-description">Encryption enabled, PIN optional, auto-lock can be disabled</span>
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label class="radio-label">
+                            <input type="radio" name="securityLevel" value="none">
+                            <span class="radio-title">No Security ⚠️</span>
+                            <span class="radio-description">No encryption, no PIN, no auto-lock (NOT recommended)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-section" id="securityOptionsSection">
+                    <h2>🔐 Encryption & PIN</h2>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="encryptionEnabled" checked>
+                            <span>Enable Encryption (AES-GCM)</span>
+                        </label>
+                        <p class="setting-description">All notes encrypted locally on this device</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="requirePIN" checked>
+                            <span>Require PIN on Unlock</span>
+                        </label>
+                        <p class="setting-description">Protect access with a 4-8 digit PIN</p>
+                    </div>
+
+                    <div id="pinSetupSection" class="setting-group">
+                        <label class="label-text">PIN Setup (4-8 digits)</label>
+                        <div class="pin-setup">
+                            <input
+                                type="password"
+                                id="pinInput"
+                                class="pin-input"
+                                placeholder="Enter 4-8 digits"
+                                maxlength="8"
+                                pattern="\d{4,8}"
+                            >
+                            <button id="setPINBtn" class="btn btn-secondary">Set PIN</button>
+                            <button id="clearPINBtn" class="btn btn-danger">Clear PIN</button>
+                        </div>
+                        <p class="pin-warning">⚠️ You cannot recover a forgotten PIN</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="label-text">Auto-Lock Timer</label>
+                        <select id="autoLockTimer" class="select-input">
+                            <option value="0">Disabled</option>
+                            <option value="30000">30 seconds</option>
+                            <option value="60000">1 minute</option>
+                            <option value="120000">2 minutes</option>
+                            <option value="300000" selected>5 minutes</option>
+                            <option value="600000">10 minutes</option>
+                        </select>
+                        <p class="setting-description">Automatically lock notes after inactivity</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="maskNoteText" checked>
+                            <span>Mask Note Text</span>
+                        </label>
+                        <p class="setting-description">Hide note content (show ••• instead) when unlocked</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rateLimitPINAttempts" checked>
+                            <span>Rate Limit PIN Attempts</span>
+                        </label>
+                        <p class="setting-description">Lock account after 5 failed attempts for 15 minutes</p>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h2>⚙️ Security Info</h2>
+                    <div class="info-box">
+                        <p><strong>Encryption:</strong> AES-256-GCM with authenticated encryption</p>
+                        <p><strong>Key Derivation:</strong> PBKDF2-SHA256 with 310,000 iterations (OWASP standard)</p>
+                        <p><strong>PIN Hashing:</strong> SHA-256</p>
+                        <p><strong>Storage:</strong> Chrome/Firefox local storage (not synced)</p>
+                        <p><strong>Network:</strong> Zero network requests - completely offline</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display Settings -->
+            <div id="ui" class="tab-content">
+                <div class="setting-section">
+                    <h2>🎨 Theme</h2>
+                    <div class="setting-group">
+                        <label class="radio-label">
+                            <input type="radio" name="theme" value="light" checked>
+                            <span class="radio-title">Light</span>
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label class="radio-label">
+                            <input type="radio" name="theme" value="dark">
+                            <span class="radio-title">Dark</span>
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label class="radio-label">
+                            <input type="radio" name="theme" value="solarized">
+                            <span class="radio-title">Solarized</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h2>🎯 Note Appearance</h2>
+
+                    <div class="setting-group">
+                        <label class="label-text">Default Note Color</label>
+                        <div class="color-picker">
+                            <input type="radio" name="defaultNoteColor" value="#FFF9E6" id="color-yellow" checked>
+                            <label for="color-yellow" style="background: #FFF9E6;" title="Yellow"></label>
+
+                            <input type="radio" name="defaultNoteColor" value="#FFE6E6" id="color-red">
+                            <label for="color-red" style="background: #FFE6E6;" title="Red"></label>
+
+                            <input type="radio" name="defaultNoteColor" value="#E6F3FF" id="color-blue">
+                            <label for="color-blue" style="background: #E6F3FF;" title="Blue"></label>
+
+                            <input type="radio" name="defaultNoteColor" value="#E6FFE6" id="color-green">
+                            <label for="color-green" style="background: #E6FFE6;" title="Green"></label>
+
+                            <input type="radio" name="defaultNoteColor" value="#F0E6FF" id="color-purple">
+                            <label for="color-purple" style="background: #F0E6FF;" title="Purple"></label>
+
+                            <input type="radio" name="defaultNoteColor" value="#FFE6F0" id="color-pink">
+                            <label for="color-pink" style="background: #FFE6F0;" title="Pink"></label>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="label-text">Font Size</label>
+                        <select id="noteFontSize" class="select-input">
+                            <option value="small">Small</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="large">Large</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="label-text">Transparency</label>
+                        <div class="slider-group">
+                            <input
+                                type="range"
+                                id="noteTransparency"
+                                min="0"
+                                max="100"
+                                value="95"
+                                class="slider"
+                            >
+                            <span id="transparencyValue">95%</span>
+                        </div>
+                        <p class="setting-description">0 = Fully transparent, 100 = Fully opaque</p>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h2>✨ Animations</h2>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableAnimations" checked>
+                            <span>Enable Animations</span>
+                        </label>
+                        <p class="setting-description">Smoother transitions and effects</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Behavior Settings -->
+            <div id="behavior" class="tab-content">
+                <div class="setting-section">
+                    <h2>📝 Note Features</h2>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enablePageNotes" checked>
+                            <span>Enable Page Notes</span>
+                        </label>
+                        <p class="setting-description">Create and save notes tied to webpages</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enablePersonalNotes" checked>
+                            <span>Enable Personal Notes</span>
+                        </label>
+                        <p class="setting-description">Create global notes not tied to any webpage</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableAutoSave" checked>
+                            <span>Auto-Save Notes</span>
+                        </label>
+                        <p class="setting-description">Automatically save changes as you type</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableAutoHide" checked>
+                            <span>Auto-Hide When Inactive</span>
+                        </label>
+                        <p class="setting-description">Hide notes after 10 seconds of inactivity</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableDragSnap" checked>
+                            <span>Enable Drag & Snap</span>
+                        </label>
+                        <p class="setting-description">Drag notes to desired position, snap to grid</p>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h2>📍 Default Note Position & Size</h2>
+
+                    <div class="setting-group">
+                        <label class="label-text">Default Position</label>
+                        <select id="defaultNotePosition" class="select-input">
+                            <option value="top-right" selected>Top Right</option>
+                            <option value="top-left">Top Left</option>
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="label-text">Default Size</label>
+                        <select id="defaultNoteSize" class="select-input">
+                            <option value="small">Small (300x200px)</option>
+                            <option value="medium" selected>Medium (400x300px)</option>
+                            <option value="large">Large (600x400px)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Keyboard Shortcuts -->
+            <div id="shortcuts" class="tab-content">
+                <div class="setting-section">
+                    <h2>⌨️ Keyboard Shortcuts</h2>
+                    <p class="setting-description">Customize keyboard shortcuts for quick access</p>
+
+                    <div class="setting-group">
+                        <label class="label-text">New Page Note</label>
+                        <input
+                            type="text"
+                            class="shortcut-input"
+                            id="shortcut-newPageNote"
+                            placeholder="Ctrl+Shift+N"
+                            readonly
+                        >
+                        <button class="btn btn-secondary btn-small" onclick="recordShortcut('newPageNote')">
+                            Record
+                        </button>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="label-text">Open Vault</label>
+                        <input
+                            type="text"
+                            class="shortcut-input"
+                            id="shortcut-openVault"
+                            placeholder="Ctrl+Shift+V"
+                            readonly
+                        >
+                        <button class="btn btn-secondary btn-small" onclick="recordShortcut('openVault')">
+                            Record
+                        </button>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="label-text">Lock Now</label>
+                        <input
+                            type="text"
+                            class="shortcut-input"
+                            id="shortcut-lockNow"
+                            placeholder="Ctrl+Shift+L"
+                            readonly
+                        >
+                        <button class="btn btn-secondary btn-small" onclick="recordShortcut('lockNow')">
+                            Record
+                        </button>
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="label-text">Toggle Sidebar</label>
+                        <input
+                            type="text"
+                            class="shortcut-input"
+                            id="shortcut-toggleSidebar"
+                            placeholder="Ctrl+Shift+S"
+                            readonly
+                        >
+                        <button class="btn btn-secondary btn-small" onclick="recordShortcut('toggleSidebar')">
+                            Record
+                        </button>
+                    </div>
+
+                    <div class="info-box">
+                        <p>💡 Press the key combination you want to use as a shortcut</p>
+                        <p>Supported: Ctrl, Shift, Alt + any letter/number/function key</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About -->
+            <div id="about" class="tab-content">
+                <div class="setting-section">
+                    <h2>ℹ️ About QuietNote</h2>
+
+                    <div class="info-box">
+                        <p><strong>QuietNote v2.0.0</strong></p>
+                        <p>A secure, encrypted sticky notes browser extension</p>
+                        <p><strong>Author:</strong> proxy9108</p>
+                        <p><strong>License:</strong> MIT</p>
+                        <p><strong>GitHub:</strong> <a href="https://github.com/proxy9108/QuietNote" target="_blank">
+                            proxy9108/QuietNote
+                        </a></p>
+                    </div>
+
+                    <h3>🔐 Security Features</h3>
+                    <ul>
+                        <li>AES-256-GCM encryption</li>
+                        <li>PBKDF2 key derivation (310,000 iterations)</li>
+                        <li>PIN protection</li>
+                        <li>Auto-lock functionality</li>
+                        <li>Local-only storage (zero cloud)</li>
+                        <li>Zero telemetry or tracking</li>
+                    </ul>
+
+                    <h3>🌐 Browser Support</h3>
+                    <ul>
+                        <li>✅ Chrome 120+</li>
+                        <li>✅ Firefox 120+</li>
+                        <li>✅ Edge 120+</li>
+                    </ul>
+
+                    <h3>📝 Features</h3>
+                    <ul>
+                        <li>Page-specific notes</li>
+                        <li>Global personal vault</li>
+                        <li>Full encryption toggle</li>
+                        <li>Customizable security levels</li>
+                        <li>Import/export functionality</li>
+                        <li>Keyboard shortcuts</li>
+                    </ul>
+
+                    <h3>⚖️ Privacy Policy</h3>
+                    <p>QuietNote is completely offline and local. No data is ever sent to our servers. All encryption happens on your device.</p>
+
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;">
+                        <button id="exportBtn" class="btn btn-secondary">📥 Export All Notes</button>
+                        <button id="importBtn" class="btn btn-secondary">📤 Import Notes</button>
+                        <input type="file" id="importFile" accept=".json" style="display: none;">
+                        <button id="clearAllBtn" class="btn btn-danger">🗑️ Clear All Notes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="settings-footer">
+            <button id="saveBtn" class="btn btn-primary">💾 Save Settings</button>
+            <span id="statusMessage" class="status-message"></span>
+        </footer>
+    </div>
+
+    <script src="settings.js"></script>
+</body>
+</html>

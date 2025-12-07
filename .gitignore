@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+
+# Build outputs
+dist/
+build/
+*.zip
+*.rar
+*.7z
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# Testing
+.nyc_output/
+coverage/
+.jest_cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Chrome/Firefox specific
+*.pem
+manifest-firefox.json (when building Chrome)
+manifest.json (when building Firefox)
+
+# Development
+dev-notes.md
+debug.log
+test-results/
