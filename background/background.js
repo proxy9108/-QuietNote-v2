@@ -50,7 +50,7 @@ let lockState = { locked: true, lastUnlock: 0 };
 /**
  * Initialize service worker
  */
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log('[QuietNote] Service Worker installed');
 
   // Initialize default storage
@@ -68,6 +68,9 @@ chrome.runtime.onInstalled.addListener(() => {
       });
     }
   });
+
+  // Run migration to v2 schema
+  await runMigration();
 });
 
 /**
@@ -145,6 +148,10 @@ async function handleMessage(request, sender, sendResponse) {
 
       case 'GET_ALL_NOTES':
         await handleGetAllNotes(request, sendResponse);
+        break;
+
+      case 'UPDATE_NOTE':
+        await handleUpdateNote(request, sendResponse);
         break;
 
       case 'DELETE_NOTE':
@@ -287,25 +294,46 @@ function handleGetLockState(sendResponse) {
 async function handleCreateNote(request, sendResponse) {
   try {
     const { note } = request;
-    const noteKey = note.url
-      ? `note:${normalizeUrl(note.url)}:${note.id}`
+
+    // Use new schema: pageURL instead of url
+    const noteKey = note.pageURL
+      ? `note:${note.pageURL}:${note.id}`
       : `note:${note.id}`;
 
     let contentToStore = note.content;
-    let encryptionMetadata = null;
+    let titleToStore = note.title;
+    let contentEncryptionMetadata = null;
+    let titleEncryptionMetadata = null;
 
     // Encrypt if enabled and unlocked
     if (encryptionKey) {
-      const encrypted = await encryptAESGCM(note.content, encryptionKey, encryptionSalt);
-      contentToStore = encrypted.ciphertext;
-      encryptionMetadata = encrypted;
+      const encryptedContent = await encryptAESGCM(note.content, encryptionKey, encryptionSalt);
+      const encryptedTitle = await encryptAESGCM(note.title, encryptionKey, encryptionSalt);
+      contentToStore = encryptedContent.ciphertext;
+      titleToStore = encryptedTitle.ciphertext;
+      contentEncryptionMetadata = encryptedContent;
+      titleEncryptionMetadata = encryptedTitle;
     }
 
+    // Create note with new v2 schema
     const storedNote = {
-      ...note,
+      id: note.id,
+      createdAt: note.createdAt || Date.now(),
+      updatedAt: Date.now(),
+      title: titleToStore,
       content: contentToStore,
-      encrypted: !!encryptionKey,
-      encryptionMetadata,
+      color: note.color || '#FFF9E6',
+      position: note.position || DEFAULT_POSITIONS['top-right'],
+      size: note.size || DEFAULT_SIZES['medium'],
+      pageURL: note.pageURL || null,
+      masked: note.masked || false,
+      _metadata: {
+        tags: note.tags,
+        pinned: note.pinned,
+        encrypted: !!encryptionKey,
+        contentEncryptionMetadata,
+        titleEncryptionMetadata,
+      },
     };
 
     chrome.storage.local.set({ [noteKey]: storedNote }, () => {
@@ -318,9 +346,9 @@ async function handleCreateNote(request, sendResponse) {
 
 async function handleGetNote(request, sendResponse) {
   try {
-    const { id, url } = request;
-    const noteKey = url
-      ? `note:${normalizeUrl(url)}:${id}`
+    const { id, pageURL } = request;
+    const noteKey = pageURL
+      ? `note:${pageURL}:${id}`
       : `note:${id}`;
 
     chrome.storage.local.get([noteKey], async result => {
@@ -332,13 +360,25 @@ async function handleGetNote(request, sendResponse) {
       }
 
       // Decrypt if needed
-      if (note.encrypted && note.encryptionMetadata && encryptionKey) {
+      if (note._metadata?.encrypted && encryptionKey) {
         try {
-          const decrypted = await decryptAESGCM(
-            note.encryptionMetadata,
-            encryptionKey
-          );
-          note.content = decrypted;
+          // Decrypt content
+          if (note._metadata.contentEncryptionMetadata) {
+            const decryptedContent = await decryptAESGCM(
+              note._metadata.contentEncryptionMetadata,
+              encryptionKey
+            );
+            note.content = decryptedContent;
+          }
+
+          // Decrypt title
+          if (note._metadata.titleEncryptionMetadata) {
+            const decryptedTitle = await decryptAESGCM(
+              note._metadata.titleEncryptionMetadata,
+              encryptionKey
+            );
+            note.title = decryptedTitle;
+          }
         } catch (error) {
           sendResponse({
             success: false,
@@ -357,7 +397,7 @@ async function handleGetNote(request, sendResponse) {
 
 async function handleGetAllNotes(request, sendResponse) {
   try {
-    const { url } = request;
+    const { pageURL } = request;
 
     chrome.storage.local.get(null, async result => {
       const notes = [];
@@ -367,19 +407,31 @@ async function handleGetAllNotes(request, sendResponse) {
 
         const note = value;
 
-        // Filter by URL if provided
-        if (url && note.url !== url) continue;
+        // Filter by pageURL if provided
+        if (pageURL && note.pageURL !== pageURL) continue;
 
         // Decrypt if needed
-        if (note.encrypted && note.encryptionMetadata && encryptionKey) {
+        if (note._metadata?.encrypted && encryptionKey) {
           try {
-            const decrypted = await decryptAESGCM(
-              note.encryptionMetadata,
-              encryptionKey
-            );
-            note.content = decrypted;
+            // Decrypt content
+            if (note._metadata.contentEncryptionMetadata) {
+              const decryptedContent = await decryptAESGCM(
+                note._metadata.contentEncryptionMetadata,
+                encryptionKey
+              );
+              note.content = decryptedContent;
+            }
+
+            // Decrypt title
+            if (note._metadata.titleEncryptionMetadata) {
+              const decryptedTitle = await decryptAESGCM(
+                note._metadata.titleEncryptionMetadata,
+                encryptionKey
+              );
+              note.title = decryptedTitle;
+            }
           } catch (error) {
-            console.warn(`Failed to decrypt note:`, error);
+            console.warn(`[QuietNote] Failed to decrypt note ${note.id}:`, error);
             continue;
           }
         }
@@ -394,11 +446,71 @@ async function handleGetAllNotes(request, sendResponse) {
   }
 }
 
+async function handleUpdateNote(request, sendResponse) {
+  try {
+    const { note } = request;
+    const noteKey = note.pageURL
+      ? `note:${note.pageURL}:${note.id}`
+      : `note:${note.id}`;
+
+    // Get existing note
+    chrome.storage.local.get([noteKey], async result => {
+      const existingNote = result[noteKey];
+
+      if (!existingNote) {
+        sendResponse({ success: false, error: 'Note not found' });
+        return;
+      }
+
+      let contentToStore = note.content;
+      let titleToStore = note.title;
+      let contentEncryptionMetadata = existingNote._metadata?.contentEncryptionMetadata;
+      let titleEncryptionMetadata = existingNote._metadata?.titleEncryptionMetadata;
+
+      // Encrypt if enabled and unlocked
+      if (encryptionKey) {
+        const encryptedContent = await encryptAESGCM(note.content, encryptionKey, encryptionSalt);
+        const encryptedTitle = await encryptAESGCM(note.title, encryptionKey, encryptionSalt);
+        contentToStore = encryptedContent.ciphertext;
+        titleToStore = encryptedTitle.ciphertext;
+        contentEncryptionMetadata = encryptedContent;
+        titleEncryptionMetadata = encryptedTitle;
+      }
+
+      // Update note preserving structure
+      const updatedNote = {
+        ...existingNote,
+        updatedAt: Date.now(),
+        title: titleToStore,
+        content: contentToStore,
+        color: note.color !== undefined ? note.color : existingNote.color,
+        position: note.position !== undefined ? note.position : existingNote.position,
+        size: note.size !== undefined ? note.size : existingNote.size,
+        masked: note.masked !== undefined ? note.masked : existingNote.masked,
+        _metadata: {
+          ...existingNote._metadata,
+          tags: note.tags !== undefined ? note.tags : existingNote._metadata?.tags,
+          pinned: note.pinned !== undefined ? note.pinned : existingNote._metadata?.pinned,
+          encrypted: !!encryptionKey,
+          contentEncryptionMetadata,
+          titleEncryptionMetadata,
+        },
+      };
+
+      chrome.storage.local.set({ [noteKey]: updatedNote }, () => {
+        sendResponse({ success: true });
+      });
+    });
+  } catch (error) {
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
 async function handleDeleteNote(request, sendResponse) {
   try {
-    const { id, url } = request;
-    const noteKey = url
-      ? `note:${normalizeUrl(url)}:${id}`
+    const { id, pageURL } = request;
+    const noteKey = pageURL
+      ? `note:${pageURL}:${id}`
       : `note:${id}`;
 
     chrome.storage.local.remove([noteKey], () => {
@@ -511,8 +623,8 @@ async function handleImportNotes(request, sendResponse) {
 
     const importedNotes = {};
     for (const note of notes) {
-      const noteKey = note.url
-        ? `note:${normalizeUrl(note.url)}:${note.id}`
+      const noteKey = note.pageURL
+        ? `note:${note.pageURL}:${note.id}`
         : `note:${note.id}`;
       importedNotes[noteKey] = note;
     }
@@ -663,6 +775,133 @@ function scheduleAutoLock(timerMs) {
       console.log('[QuietNote] Auto-locking notes');
       handleLock(() => {});
     }, timerMs);
+  }
+}
+
+/**
+ * Migration to v2 Schema
+ */
+
+const DEFAULT_POSITIONS = {
+  'top-right': { x: 1600, y: 20 },
+  'top-left': { x: 20, y: 20 },
+  'bottom-right': { x: 1600, y: 860 },
+  'bottom-left': { x: 20, y: 860 },
+};
+
+const DEFAULT_SIZES = {
+  'small': { width: 200, height: 150 },
+  'medium': { width: 300, height: 200 },
+  'large': { width: 400, height: 300 },
+};
+
+function normalizeColor(color) {
+  if (!color) return '#FFF9E6';
+  if (/^#[0-9A-Fa-f]{6}$/.test(color)) return color.toUpperCase();
+  if (/^#[0-9A-Fa-f]{3}$/.test(color)) {
+    const r = color[1];
+    const g = color[2];
+    const b = color[3];
+    return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
+  }
+  const colorMap = {
+    'yellow': '#FFF9E6',
+    'blue': '#E3F2FD',
+    'green': '#E8F5E9',
+    'pink': '#FCE4EC',
+    'purple': '#F3E5F5',
+    'orange': '#FFF3E0',
+  };
+  return colorMap[color.toLowerCase()] || '#FFF9E6';
+}
+
+async function runMigration() {
+  try {
+    const migrationDone = await chrome.storage.local.get('migration_v2_done');
+
+    if (migrationDone['migration_v2_done']) {
+      console.log('[QuietNote] ✅ Migration already completed');
+      return;
+    }
+
+    console.log('[QuietNote] 🚀 Starting migration to v2 schema...');
+
+    const allStorage = await chrome.storage.local.get(null);
+    const settings = allStorage.settings || DEFAULT_SETTINGS;
+    const defaultPosition = settings.defaultNotePosition || 'top-right';
+    const defaultSize = settings.defaultNoteSize || 'medium';
+
+    const updates = {};
+    const toDelete = [];
+    let migratedCount = 0;
+
+    for (const [key, value] of Object.entries(allStorage)) {
+      if (!key.startsWith('note:')) continue;
+
+      const oldNote = value;
+
+      // Check if already migrated
+      if (oldNote.position && oldNote.size && oldNote.hasOwnProperty('pageURL')) {
+        console.log(`[QuietNote] ⏭️ Skipping already migrated: ${oldNote.id}`);
+        continue;
+      }
+
+      // Create new note with all required fields
+      const newNote = {
+        id: oldNote.id,
+        createdAt: oldNote.createdAt,
+        updatedAt: oldNote.updatedAt,
+        title: oldNote.title || '',
+        content: oldNote.content || '',
+        color: normalizeColor(oldNote.color),
+        position: DEFAULT_POSITIONS[defaultPosition],
+        size: DEFAULT_SIZES[defaultSize],
+        pageURL: oldNote.url ? normalizeUrl(oldNote.url) : null,
+        masked: false,
+        _metadata: {
+          tags: oldNote.tags,
+          pinned: oldNote.pinned,
+          encrypted: oldNote.encrypted || false,
+          contentEncryptionMetadata: oldNote.encryptionMetadata,
+        },
+      };
+
+      // Build new storage key
+      const newKey = newNote.pageURL
+        ? `note:${newNote.pageURL}:${newNote.id}`
+        : `note:${newNote.id}`;
+
+      updates[newKey] = newNote;
+
+      // Mark old key for deletion if different
+      if (key !== newKey) {
+        toDelete.push(key);
+      }
+
+      migratedCount++;
+      console.log(`[QuietNote] ✅ Migrated: ${oldNote.id}`);
+    }
+
+    // Save migrated notes
+    if (Object.keys(updates).length > 0) {
+      console.log(`[QuietNote] 💾 Saving ${migratedCount} migrated notes...`);
+      await chrome.storage.local.set(updates);
+    }
+
+    // Delete old keys
+    if (toDelete.length > 0) {
+      console.log(`[QuietNote] 🗑️ Removing ${toDelete.length} old note keys...`);
+      await chrome.storage.local.remove(toDelete);
+    }
+
+    // Mark migration complete
+    await chrome.storage.local.set({ migration_v2_done: true });
+
+    console.log('[QuietNote] ✅ Migration completed successfully');
+    console.log(`[QuietNote]    Migrated: ${migratedCount} notes`);
+    console.log(`[QuietNote]    Deleted old keys: ${toDelete.length}`);
+  } catch (error) {
+    console.error('[QuietNote] ❌ Migration failed:', error);
   }
 }
 
