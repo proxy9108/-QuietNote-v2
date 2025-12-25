@@ -1,6 +1,6 @@
-# QuietNote v2 - Enterprise-Grade Secure Sticky Notes
+# QuietNote v2 - Enterprise-Grade Secure Sticky Notes (In progress)
 
-A production-ready, open-source browser extension with **military-grade encryption**, **customizable security levels**, and **zero tracking**.
+GOAL: A production-ready, open-source browser extension with **military-grade encryption**, **customizable security levels**, and **zero tracking**.
 
 ![QuietNote](assets/banner.png)
 
